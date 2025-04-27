@@ -74,6 +74,42 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
   }
 }
 
+resource "aws_iam_role" "s3_full_access" {
+  name = "${var.aws_s3_state_bucket_name}-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::829250931565:root"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "s3_bucket_access" {
+  name = "${var.aws_s3_state_bucket_name}-full-access"
+  role = aws_iam_role.s3_full_access.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "s3:*"
+        Resource = [
+          "arn:aws:s3:::dswt-2025-anz-ci-cd-terraform-state",
+          "arn:aws:s3:::dswt-2025-anz-ci-cd-terraform-state/*"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = var.aws_dynamodb_lock_table_name
   billing_mode = "PAY_PER_REQUEST"
