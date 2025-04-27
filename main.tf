@@ -4,12 +4,20 @@ terraform {
       source = "integrations/github"
       version = "6.6.0"
     }
+    aws = {
+      source = "hashicorp/aws"
+      version = "5.96.0"
+    }
   }
 }
 
 provider "github" {
   token = var.github_token
   owner = var.github_owner
+}
+
+provider "aws" {
+  region = var.aws_region
 }
 
 locals {
@@ -19,7 +27,13 @@ locals {
 resource "github_repository" "this" {
   name        = var.github_repository_name
   visibility  = "public"
-  auto_init   = true
+
+  template {
+    owner                = "javabrett"
+    repository           = "dswt-2025-anz-ci-cd-template"
+    include_all_branches = false
+  }
+
   has_issues  = true
   has_wiki    = false
 }
@@ -49,3 +63,24 @@ resource "github_actions_secret" "aws_role" {
   plaintext_value  = var.aws_role_arn
 }
 
+resource "aws_s3_bucket" "terraform_state" {
+  bucket = var.aws_s3_state_bucket_name
+}
+
+resource "aws_s3_bucket_versioning" "versioning_example" {
+  bucket = aws_s3_bucket.terraform_state.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = var.aws_dynamodb_lock_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+}
